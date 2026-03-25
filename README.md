@@ -1,151 +1,186 @@
-# Auto Mode Router v2
+# pi-auto-mode-router
 
-Pi için geliştirilen bu eklenti, `/model` menüsüne **Auto Mode** isminde sanal bir model ekler.
+Auto Mode Router is a Pi extension that adds a virtual `auto/mode` model and routes each turn to the most appropriate model for **frontend**, **logic**, or **terminal** work.
 
-## Yenilikler (v2)
+It can also switch domains **mid-turn** with a built-in `switch_domain` tool when a task spans both UI/design and implementation/backend work.
 
-### 🔄 Mid-Turn Model Geçişi
-Artık tek bir prompt içinde hem tasarım hem logic çalışması gerektiğinde, model **çalışma sırasında** otomatik olarak değişir:
+## What it does
 
-- **Dosya bazlı geçiş**: `.css`, `.html` gibi dosyalar yazılırken frontend modeline, `.ts`, `.py` gibi dosyalar yazılırken logic modeline otomatik geçiş yapılır
-- **Tool bazlı geçiş**: Model, `switch_domain` tool'unu kullanarak kendi kararıyla domain değiştirebilir
-- **Faz yönetimi**: Çoklu domain görevler alt görevlere (faz) ayrılır ve sırayla işlenir
+When Auto Mode is selected, each new prompt goes through this flow:
 
-### 📋 Görev Parçalama (Task Decomposition)
-Analiz modeli artık "hem UI hem logic gerekiyor" durumunu tespit edip alt görevlere ayırır:
+1. The prompt is analyzed with your chosen **analysis model**
+2. The router decides whether the task is primarily:
+   - **frontend**
+   - **logic**
+   - **terminal**
+3. Pi switches to the best configured model for that domain
+4. If the task is multi-domain, the extension can:
+   - decompose the task into phases
+   - inject phase guidance into the turn
+   - let the model call `switch_domain`
+   - auto-switch on certain file types during tool execution
 
+## Highlights
+
+- Adds a virtual **Auto Mode** model to `/model`
+- Commands: `/auto-mode` and `/auto`
+- Searchable model picker for analysis/frontend/logic model selection
+- Multi-domain task detection and decomposition
+- Mid-turn model switching with `switch_domain`
+- File-extension-based auto switching for clear frontend/logic files
+- Terminal-only tasks can stay on the analysis model
+- Status indicator such as `auto:armed`, `auto:frontend`, `auto:logic`, `auto:terminal`, `auto:frontend [1/3]`
+- Config stored in `~/.pi/agent/auto-mode-router.json`
+- Safety limit of 6 mid-turn switches per turn
+
+## Installation
+
+### Option 1: install from npm as a Pi package
+
+```bash
+pi install npm:pi-auto-mode-router
 ```
-Prompt: "Bir todo uygulaması yap. Modern UI tasarla ve CRUD API'lerini implement et"
 
-Analiz sonucu:
-  Faz 1: [logic] CRUD API ve state yönetimi
-  Faz 2: [frontend] Modern UI tasarımı ve styling
-```
-
-### 🤖 switch_domain Tool
-Model, görev sırasında uzmanlık alanını değiştirmek istediğinde bu tool'u çağırır:
-
-```
-switch_domain({ domain: "frontend", reason: "API tamamlandı, şimdi UI tasarımına geçiyorum" })
-```
-
-## Nasıl Çalışır?
-
-Auto Mode seçildiğinde her yeni prompt için şu akış çalışır:
-
-1. Prompt önce seçtiğiniz **analiz modeline** gönderilir
-2. Analiz sonucu promptun:
-   - **Tek domain** mi (sadece frontend veya sadece logic)
-   - **Çoklu domain** mi (hem frontend hem logic)
-   olduğunu belirler
-3. Tek domain ise: Uygun model seçilir ve görev başlar
-4. Çoklu domain ise:
-   - Alt görevler (fazlar) belirlenir
-   - İlk fazın modeli seçilir
-   - System prompt'a faz bilgileri ve geçiş talimatları eklenir
-   - Model, `switch_domain` tool'u ile fazlar arası geçiş yapar
-   - Dosya yazma/düzenleme sırasında dosya tipine göre otomatik geçiş de yapılır
-5. Tur bitince durum güncellenir
-
-## Desteklenen Özellikler
-
-- `/model` içinden seçilebilen sanal **Auto Mode** modeli
-- `/auto-mode` ve `/auto` komutları
-- Analiz modeli, frontend modeli ve logic modeli için overlay seçim diyaloğu
-- **Mid-Turn Geçiş** ayarı (açılıp kapatılabilir)
-- Enter/Space ile açılan, tüm modelleri gösteren aramalı hızlı model picker
-- Mevcut provider'lardan erişilebilir modellerin listelenmesi
-- Her prompt için yeniden yönlendirme
-- **Çoklu domain görev tespit ve parçalama**
-- **`switch_domain` tool ile model-kararı domain geçişi**
-- **Dosya uzantısına göre otomatik mid-turn geçiş**
-- **Faz takibi ve ilerleme raporlama**
-- Tek başına terminal / git komutu isteklerinde analiz modelini doğrudan kullanma
-- Footer status alanında `auto:armed`, `auto:frontend`, `auto:logic`, `auto:terminal`, `auto:frontend [1/3]` göstergeleri
-- Global konfigürasyon dosyası: `~/.pi/agent/auto-mode-router.json`
-- Güvenlik: turda maksimum 6 mid-turn geçiş limiti
-
-## Komutlar
-
-- `/auto-mode` → menü açar
-- `/auto-mode on` → Auto Mode'u etkinleştirir
-- `/auto-mode off` → Auto Mode'u kapatır
-- `/auto-mode status` → mevcut durumu gösterir (faz bilgileri dahil)
-- `/auto-mode config` → model seçimlerini ve mid-turn ayarını değiştirir
-- `/auto` → kısa alias
-- `Alt+A` → Auto Mode aç/kapat (toggle)
-
-## Kurulum / kullanım
-
-Eklenti global auto-discovery yoluna konulduğu için genelde sadece:
+Then restart Pi or run:
 
 ```bash
 /reload
 ```
 
-çalıştırmanız yeterlidir.
+### Option 2: local development install
 
-Sonra:
+If you are developing locally, put the package under an auto-discovered extension location, for example:
 
-1. `/auto-mode config` ile overlay diyaloğunu açın
-2. `↑↓` ile satır seçin, `Enter` veya `Space` ile aramalı model görünümünü açın
-3. Model görünümünde yazmaya başlayarak filtreleyin, `↑↓` ile gezin, `Enter` ile seçin
-4. **Mid-Turn Geçiş** ayarını açık/kapalı olarak seçin
-5. Ana ekranda `Ctrl+S` ile kaydedin
-6. `/model` içinden `auto/mode` seçin
-7. Normal şekilde prompt yazmaya devam edin
+- `~/.pi/agent/extensions/auto-mode-router/`
+- `.pi/extensions/auto-mode-router/`
 
-## Dosya Domain Haritası
+Then run:
 
-### Frontend olarak tanınan dosyalar
-- `.css`, `.scss`, `.sass`, `.less`, `.styl` (stil dosyaları)
-- `.html`, `.htm`, `.svg` (markup)
-- Yol içinde `/styles/`, `/css/`, `/assets/`, `/theme`, `/components/ui/` geçen dosyalar
+```bash
+/reload
+```
 
-### Logic olarak tanınan dosyalar
+## Setup
+
+1. Run `/auto-mode config`
+2. Choose:
+   - analysis model
+   - frontend model
+   - logic model
+   - whether **Mid-turn switching** is on
+3. Save with `Ctrl+S`
+4. Open `/model`
+5. Select `auto/mode`
+6. Keep using Pi normally
+
+## Commands
+
+- `/auto-mode` → open menu
+- `/auto-mode on` → enable Auto Mode
+- `/auto-mode off` → disable Auto Mode
+- `/auto-mode status` → show current state
+- `/auto-mode config` → change models and mid-turn setting
+- `/auto` → short alias
+- `Alt+A` → toggle Auto Mode
+
+## Domain mapping
+
+### Routed as frontend
+
+- `.css`, `.scss`, `.sass`, `.less`, `.styl`
+- `.html`, `.htm`, `.svg`
+- paths containing `/styles/`, `/css/`, `/assets/`, `/theme`, `/components/ui/`
+
+### Routed as logic
+
 - `.ts`, `.js`, `.py`, `.go`, `.rs`, `.java`, `.kt`, `.cs`, `.cpp`, `.c`, `.h`
 - `.sql`, `.graphql`, `.json`, `.yaml`, `.toml`
-- `.test.ts`, `.spec.ts` (test dosyaları)
-- Yol içinde `/api/`, `/server/`, `/lib/`, `/utils/`, `/services/`, `/__tests__/` geçen dosyalar
+- `.test.ts`, `.spec.ts`
+- paths containing `/api/`, `/server/`, `/lib/`, `/utils/`, `/services/`, `/__tests__/`
 
-### Karışık (Mixed) dosyalar — geçiş yapılmaz
-- `.jsx`, `.tsx`, `.vue`, `.svelte` (hem UI hem logic içerebilirler)
+### Mixed files: no file-based auto switch
 
-## Örnek Senaryo
+- `.jsx`, `.tsx`, `.vue`, `.svelte`
 
-```
-Kullanıcı: "Bir kullanıcı profil sayfası yap. Backend'de profil API'si olsun, 
-            frontend'de modern bir kart tasarımı olsun"
+These can contain both UI and logic, so the extension avoids file-based switching for them. The model may still call `switch_domain` when appropriate.
 
-Auto Mode akışı:
-1. Analiz → Çoklu domain tespit edildi
-2. Fazlar belirlendi:
-   - Faz 1: [logic] Profil API endpoint'i ve veri modeli
-   - Faz 2: [frontend] Profil kartı UI tasarımı
-3. Logic model (ör: Claude Sonnet) ile API yazılır
-4. Model switch_domain("frontend", "API tamamlandı, UI tasarımına geçiyorum") çağırır
-5. Frontend model (ör: Gemini) ile UI tasarlanır
-6. Status bar: auto:logic [1/2] → auto:frontend [2/2] → ✅ Tüm fazlar tamamlandı
+## Example
+
+User prompt:
+
+```text
+Build a user profile page. Add a backend profile API and a polished frontend card UI.
 ```
 
-## Mimari Notlar
+Possible routing flow:
 
-Bu eklenti pi dokümantasyonundaki şu mekanizmaları kullanır:
+1. Analyzer detects a multi-domain task
+2. Phases are created:
+   - Phase 1: `[logic]` profile API and data handling
+   - Phase 2: `[frontend]` profile card UI and styling
+3. Pi starts with the logic model
+4. The model calls:
 
-- `registerProvider()` ile sanal `auto/mode` modeli ekleme
-- `registerTool()` ile `switch_domain` tool kaydı
-- `model_select` ile Auto Mode aktivasyonu ve manuel moda dönüş
-- `input` event ile prompt analizi ve çoklu domain tespit
-- `before_agent_start` ile system prompt'a faz talimatları ekleme
-- `tool_call` event ile dosya tipine göre mid-turn otomatik geçiş
-- `agent_end` ile faz durumu raporlama ve temizlik
-- `ctx.ui.custom()`, `SettingsList` ve `ctx.ui.notify()` ile dialog / bildirim akışı
-- `@mariozechner/pi-ai` içinden `complete()` ile analiz modeline sınıflandırma çağrısı
-- `StringEnum` ile Google uyumlu enum parametreleri
+```ts
+switch_domain({ domain: "frontend", reason: "API is done, moving to the UI" })
+```
 
-## Not
+5. Pi switches to the frontend model
+6. Status updates from `auto:logic [1/2]` to `auto:frontend [2/2]`
 
-- Auto Mode yalnızca seçili analiz ve hedef modeller için kimlik bilgileri mevcutsa anlamlı çalışır
-- Mid-turn geçiş limiti turda maksimum 6 geçiş ile sınırlıdır (sonsuz döngü koruması)
-- Mixed dosyalar (.tsx, .vue vb.) için otomatik dosya-bazlı geçiş yapılmaz; model switch_domain tool'unu kullanabilir
-- Konfigürasyon v1'den v2'ye otomatik uyumludur, mevcut ayarlar korunur
+## How it is built
+
+This extension uses Pi extension APIs documented in the official docs, including:
+
+- `registerProvider()` for the virtual `auto/mode` model
+- `registerTool()` for `switch_domain`
+- `input` event handling for prompt analysis
+- `before_agent_start` for phase guidance injection
+- `tool_call` hooks for file-based switching
+- `agent_end` for cleanup and phase reporting
+- `ctx.ui.custom()`, `SettingsList`, and notifications for configuration UI
+- `complete()` from `@mariozechner/pi-ai` for classifier calls
+
+## Packaging for Pi
+
+This package is structured as a Pi package and can be installed with `pi install npm:pi-auto-mode-router`.
+
+Pi package docs used for this setup:
+
+- package must include `keywords: ["pi-package"]`
+- package should declare a `pi` manifest
+- core Pi libraries should stay in `peerDependencies`
+
+Current manifest:
+
+```json
+{
+  "name": "pi-auto-mode-router",
+  "keywords": ["pi-package"],
+  "pi": {
+    "extensions": ["./index.ts"]
+  }
+}
+```
+
+## Publishing to npm
+
+From this directory:
+
+```bash
+npm publish --access public
+```
+
+Useful checks before publishing:
+
+```bash
+npm pack --dry-run
+npm view pi-auto-mode-router version
+```
+
+## Notes
+
+- Auto Mode is only useful when the selected analysis/frontend/logic models are available and authenticated in Pi
+- If the analysis model is missing or fails, the extension falls back to heuristic routing
+- Mixed component files are intentionally not auto-switched by file extension
+- Mid-turn switching is capped to avoid loops

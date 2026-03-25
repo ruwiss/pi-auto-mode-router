@@ -1,0 +1,39 @@
+{
+  "name": "pi-auto-mode-router",
+  "version": "2.0.0",
+  "description": "Auto Mode Router extension for Pi: route prompts between frontend, logic, and terminal models with optional mid-turn domain switching.",
+  "keywords": [
+    "pi-package",
+    "pi",
+    "pi-extension",
+    "shittycodingagent",
+    "auto-mode",
+    "router",
+    "llm-routing",
+    "model-routing"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "files": [
+    "index.ts",
+    "README.md",
+    "package.json"
+  ],
+  "exports": {
+    ".": "./index.ts"
+  },
+  "peerDependencies": {
+    "@mariozechner/pi-ai": "*",
+    "@mariozechner/pi-coding-agent": "*",
+    "@mariozechner/pi-tui": "*",
+    "@sinclair/typebox": "*"
+  },
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
