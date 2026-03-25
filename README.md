@@ -2,7 +2,7 @@
 
 Auto Mode Router is a Pi extension that adds a virtual `auto/mode` model and routes each turn to the most appropriate model for **frontend**, **logic**, or **terminal** work.
 
-It can also switch domains **mid-turn** with a built-in `switch_domain` tool when a task spans both UI/design and implementation/backend work.
+It can also support **mid-turn** domain changes through a built-in `switch_domain` tool when a task spans both UI/design and implementation/backend work.
 
 ## What it does
 
@@ -15,10 +15,10 @@ When Auto Mode is selected, each new prompt goes through this flow:
    - **terminal**
 3. Pi switches to the best configured model for that domain
 4. If the task is multi-domain, the extension can:
-   - decompose the task into phases
-   - inject phase guidance into the turn
-   - let the model call `switch_domain`
-   - auto-switch on certain file types during tool execution
+   - detect that it spans multiple domains
+   - decompose it into ordered phases
+   - inject phase guidance into the system prompt
+   - let the model call `switch_domain` to move to the next domain
 
 ## Highlights
 
@@ -27,11 +27,22 @@ When Auto Mode is selected, each new prompt goes through this flow:
 - Searchable model picker for analysis/frontend/logic model selection
 - Multi-domain task detection and decomposition
 - Mid-turn model switching with `switch_domain`
-- File-extension-based auto switching for clear frontend/logic files
 - Terminal-only tasks can stay on the analysis model
 - Status indicator such as `auto:armed`, `auto:frontend`, `auto:logic`, `auto:terminal`, `auto:frontend [1/3]`
 - Config stored in `~/.pi/agent/auto-mode-router.json`
 - Safety limit of 6 mid-turn switches per turn
+
+## Important implementation note
+
+The current implementation does **not** do automatic file-extension or path-based routing during tool calls.
+
+So while the model receives guidance about when to switch domains, actual mid-turn switching happens through:
+
+- initial prompt analysis and routing
+- multi-domain phase guidance
+- explicit `switch_domain` tool calls by the model
+
+There is a reserved `tool_call` section in the code for future work, but no file-based auto-switching logic is currently implemented there.
 
 ## Installation
 
@@ -83,27 +94,6 @@ Then run:
 - `/auto` → short alias
 - `Alt+A` → toggle Auto Mode
 
-## Domain mapping
-
-### Routed as frontend
-
-- `.css`, `.scss`, `.sass`, `.less`, `.styl`
-- `.html`, `.htm`, `.svg`
-- paths containing `/styles/`, `/css/`, `/assets/`, `/theme`, `/components/ui/`
-
-### Routed as logic
-
-- `.ts`, `.js`, `.py`, `.go`, `.rs`, `.java`, `.kt`, `.cs`, `.cpp`, `.c`, `.h`
-- `.sql`, `.graphql`, `.json`, `.yaml`, `.toml`
-- `.test.ts`, `.spec.ts`
-- paths containing `/api/`, `/server/`, `/lib/`, `/utils/`, `/services/`, `/__tests__/`
-
-### Mixed files: no file-based auto switch
-
-- `.jsx`, `.tsx`, `.vue`, `.svelte`
-
-These can contain both UI and logic, so the extension avoids file-based switching for them. The model may still call `switch_domain` when appropriate.
-
 ## Example
 
 User prompt:
@@ -136,7 +126,7 @@ This extension uses Pi extension APIs documented in the official docs, including
 - `registerTool()` for `switch_domain`
 - `input` event handling for prompt analysis
 - `before_agent_start` for phase guidance injection
-- `tool_call` hooks for file-based switching
+- `model_select` handling for enabling/disabling Auto Mode
 - `agent_end` for cleanup and phase reporting
 - `ctx.ui.custom()`, `SettingsList`, and notifications for configuration UI
 - `complete()` from `@mariozechner/pi-ai` for classifier calls
@@ -182,5 +172,5 @@ npm view pi-auto-mode-router version
 
 - Auto Mode is only useful when the selected analysis/frontend/logic models are available and authenticated in Pi
 - If the analysis model is missing or fails, the extension falls back to heuristic routing
-- Mixed component files are intentionally not auto-switched by file extension
+- Multi-domain execution guidance is injected into the system prompt for the turn
 - Mid-turn switching is capped to avoid loops

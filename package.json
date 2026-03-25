@@ -1,6 +1,6 @@
 {
   "name": "pi-auto-mode-router",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Auto Mode Router extension for Pi: route prompts between frontend, logic, and terminal models with optional mid-turn domain switching.",
   "keywords": [
     "pi-package",
